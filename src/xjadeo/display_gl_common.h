@@ -70,6 +70,7 @@ static void gl_sync_unlock();
 extern double display_scale_x_modifier;
 extern double display_scale_y_modifier;
 extern double display_deform_corners[8];
+extern double transparency;
 extern int recalculate_homography;
 
 GLfloat homograpy[16];
@@ -175,6 +176,8 @@ static void opengl_draw (int width, int height, unsigned char* surf_data) {
 	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA,
 			width, height, /*border*/ 0,
 			GL_BGRA, GL_UNSIGNED_BYTE, surf_data);
+	glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_DECAL);
+	glColor4f(1.0, 1.0, 1.0, (GLfloat) transparency);
 
 	glBegin(GL_QUADS);
 

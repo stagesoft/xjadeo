@@ -59,6 +59,7 @@ extern char midiid[128];
 extern double display_scale_x_modifier;
 extern double display_scale_y_modifier;
 extern double display_deform_corners[8];
+extern double transparency;
 extern int recalculate_homography;
 #endif
 
@@ -225,6 +226,17 @@ static int oscb_corner4(const char *path, const char *types, lo_arg **argv, int 
    display_deform_corners[7]=argv[1]->f;
   force_redraw=1;
   recalculate_homography=1;
+#endif
+  return(0);
+}
+
+
+static int oscb_trans(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data){
+#ifdef WARP
+  if (want_verbose) fprintf(stderr, "OSC: %s <-f:%f \n", path, argv[0]->f);
+  
+  transparency=argv[0]->f;
+  force_redraw=1;
 #endif
   return(0);
 }
@@ -416,6 +428,7 @@ static struct osc_command OSCC[] = {
   {"/jadeo/art/corner2", "ff", &oscb_corner2, "Modify corner deformation by corner number"},
   {"/jadeo/art/corner3", "ff", &oscb_corner3, "Modify corner deformation by corner number"},
   {"/jadeo/art/corner4", "ff", &oscb_corner4, "Modify corner deformation by corner number"},
+  {"/jadeo/art/transparency", "f", &oscb_trans, "Modify layer transparency"},
 #endif
 
 #if defined CROPIMG || defined OSC_DOC_ALL
