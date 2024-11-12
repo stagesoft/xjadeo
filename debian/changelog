@@ -1,3 +1,28 @@
+xjadeo (0.8.14~cuems) buster; urgency=medium
+
+  * Imported Upstream version 0.8.14
+    * Fix JACK Transport when using pipewire
+    * Update build-script (disable QT GUI)
+
+    * wrap-around/loop: fix modulo calculation (by trinitou)
+    * Add Xinerama support (linux, by Ion Reguera)
+    * Update build-scripts, fix macOS portmidi support
+
+    * add compatibility for ffmpeg-5.1
+    * fix UI scale when building on 10.15 or later
+
+    * add compatibility for ffmpeg-5.0
+    * update static-builder to use ffmpeg-5.0
+    * add support for modern mingw (pthread)
+    * update git clone URIs - avoid git://
+
+    * add keyboard shortcuts for +/- 1 second offsets
+    * tweak Windows installer 32/64bit reg-keys
+    * fix Linux gcc10 builds
+    * add support for macOS BigSur and Apple/ARM
+ -- Ion Reguera <ion@stagelab.net>  Sat, 23 Jan 2021 21:23:16 +0100
+
+
 xjadeo (0.8.9~cuems-2) buster; urgency=medium
 
   * disable OSD at build time
