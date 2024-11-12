@@ -8,7 +8,7 @@ AC_CANONICAL_TARGET
 
 VERSION_MAJOR=0
 VERSION_MINOR=8
-VERSION_SUB=9
+VERSION_SUB=14
 
 AM_INIT_AUTOMAKE(xjadeo, [${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_SUB}])
 AM_CONFIG_HEADER(config.h)
@@ -28,8 +28,6 @@ AC_ARG_ENABLE(midi,        AC_HELP_STRING([--disable-midi], [Do not build any of
 AC_ARG_ENABLE(portmidi,    AC_HELP_STRING([--disable-portmidi], [disable portmidi support (default:auto)]))
 AC_ARG_ENABLE(alsamidi,    AC_HELP_STRING([--disable-alsamidi], [disable alsamidi support (default:auto)]))
 AC_ARG_ENABLE(embed-font,  AC_HELP_STRING([--enable-embed-font], [include OnScreenDisplay font in binary (default: off)]))
-AC_ARG_ENABLE(qtgui,       AC_HELP_STRING([--enable-qtgui],[Build the Qt GUI controller (default:off)]))
-AC_ARG_WITH(qt4prefix,     AS_HELP_STRING([--with-qt4prefix], [prefix for Qt4 installation, e.g. "/usr/lib/qt4"]), qt4prefix="$withval", qt4prefix="")
 AC_ARG_WITH(qmakeargs,     AS_HELP_STRING([--with-qmakeargs], [specify custom qmake arguments]), qmakeargs="$withval", qmakeargs="")
 AC_ARG_ENABLE(contrib,     AC_HELP_STRING([--enable-contrib], [Compile and install code in contrib folder (default:off)]))
 AC_ARG_ENABLE(cuems,       AC_HELP_STRING([--enable-cuems], [enable CUEMS mode, also enbales WARP and XINERAMA, disables DRAW_CROSS]))
@@ -38,7 +36,7 @@ AC_ARG_ENABLE(osd,         AC_HELP_STRING([--disable--osd], [completely disable 
 AC_ARG_ENABLE(timescale,   AC_HELP_STRING([--enable-timescale], [enable time-mapping/loop-playback support - experimental - DO NOT USE]))
 AC_ARG_ENABLE(framecrop,   AC_HELP_STRING([--enable-framecrop], [hardcoded frame cropping - experimental - DO NOT USE]))
 AC_ARG_ENABLE(weakjack,    AC_HELP_STRING([--enable-weakjack], [load libjack at runtime (weak linking -- always enabled on OSX and Windows)]))
-AC_ARG_ENABLE(xinerama,    AC_HELP_STRING([--enable-xinerama],[Enable xinerama support - experimental - DO NOT USE]))
+AC_ARG_ENABLE(xinerama,    AC_HELP_STRING([--enable-xinerama],[Enable xinerama support.]))
 
 
 LIBPREF=lib
@@ -50,7 +48,7 @@ case $target_os in
 		PM_OS=mac
 		AC_DEFINE([PLATFORM_OSX], [], [Mac OSX version])
 		PLATFORM_OSX=1
-		LDFLAGS="$LDFLAGS -lz -lbz2 -framework Carbon -framework Quicktime"
+		LDFLAGS="$LDFLAGS -lz -lbz2"
 		GL_LIBS="-framework Cocoa -framework OpenGL"
 		AC_DEFINE(HAVE_GL)
 		HAVE_GL=1
@@ -58,6 +56,9 @@ case $target_os in
 		AM_CONDITIONAL([TARGET_LINUX], false)
 		AM_CONDITIONAL([TARGET_NETBSD], false)
 		AM_CONDITIONAL([TARGET_WIN32], false)
+		if test $(sw_vers -productVersion | cut -d '.' -f 1) -lt 11 -a $(sw_vers -productVersion | cut -d '.' -f 2) -lt 15; then
+			LDFLAGS="$LDFLAGS -framework Carbon -framework Quicktime"
+		fi
 		dnl 2006/11/13 : 32 bit RGBA is known not to work on OSX ffmpeg+imlib2
 		dnl IMLIB2RGBA
 		;;
@@ -425,50 +426,6 @@ AS_IF([ test "x$enable_ltc" != "xno"], [
 AC_SUBST(LTC_CFLAGS)
 AC_SUBST(LTC_LIBS)
 
-dnl ---------------------------------------------------------------------------
-dnl Qt GUI stuff (unmaintained)
-if test "$enable_qtgui" = "yes"; then
-
-	if test "x$qt4prefix" = "x"; then
-		qt4prefix=$($PKG_CONFIG --variable=prefix QtGui)
-	fi
-
-	# Check for Qt qmake utility.
-	AC_PATH_PROG(ac_qmake, qmake, [no], $qt4prefix/bin)
-	AC_PATH_PROG(ac_lrelease, lrelease, [no], $qt4prefix/bin)
-	if test "x$ac_qmake" = "xno" -o "x$ac_lrelease" = "xno" ; then
-		AC_MSG_ERROR([qmake not found: please install the Qt4 development
-		              package of your distribution. Try setting --with-qt4prefix=QTROOT
-		              or use --disable-qtgui to compile xjadeo.])
-	fi
-
-	HAVE_QT4=1
-
-	if test "x$qmakeargs" = "x"; then
-		if test -n "$PLATFORM_WINDOWS"; then
-			ac_qmake_args="-spec win32-x-g++ -config release"
-		else
-			ac_qmake_args="-config release"
-		fi
-	else
-		ac_qmake_args="$qmakeargs"
-	fi
-	AC_SUBST(ac_qmake)
-	AC_SUBST(ac_qmake_args)
-	AC_SUBST(ac_lrelease)
-
-	ac_qtgui_dir="qt-gui"
-
-	AC_CONFIG_FILES(src/qt-gui/Makefile src/qt-gui/qjadeo.pro)
-
-else
-	ac_qtgui_dir=""
-fi
-
-AC_SUBST(ac_qtgui_dir)
-
-dnl ---------- End of Qt GUI stuff ---------------
-
 ac_contrib_dir=""
 
 if test "x$enable_contrib" = "xyes"; then
@@ -598,7 +555,6 @@ AC_MSG_WARN([
  qjadeo is deprecated an not intended to be used.
  It will be removed in future releases.
  Xjadeo now features a complete built-in user interface.
- Do not use --enable-qtgui unless you really know what you are doing.
 ])
 fi
 

@@ -1,6 +1,6 @@
 /* xjadeo - jack video monitor main
  *
- * (C) 2006-2015 Robin Gareus <robin@gareus.org>
+ * (C) 2006-2021 Robin Gareus <robin@gareus.org>
  * (C) 2006-2011 Luis Garrido <luisgarrido@users.sourceforge.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -745,8 +745,10 @@ usage (int status)
 " 'v'          Cycle On Screen VTS/frame number display\n"
 " 'x'          Toggle seek-bar (experimental)\n"
 " '\\'          Reset timecode offset to zero\n"
-" '+'          Increase timecode offset by one frame\n"
+" '='          Increase timecode offset by one frame\n"
 " '-'          Decrease timecode offset by one frame\n"
+" '+'          Increase timecode offset by one second\n"
+" '_'          Decrease timecode offset by one second\n"
 " '{'          Decrement timecode offset by one minute\n"
 " '}'          Increment timecode offset by one minute\n"
 " ','          Resize window to match aspect ratio\n"
@@ -793,7 +795,7 @@ static void printversion (void) {
 	printf (" MTC/MIDI:      [ %s]\n", cfg_midi);
 	printf (" Display(s):    [ %s]\n", cfg_displays);
 	printf ("\n"
-			"Copyright (C) GPL 2006-2015 Robin Gareus <robin@gareus.org>\n"
+			"Copyright (C) GPL 2006-2021 Robin Gareus <robin@gareus.org>\n"
 			"Copyright (C) GPL 2006-2011 Luis Garrido <luisgarrido@users.sourceforge.net>\n"
 			"This is free software; see the source for copying conditions.  There is NO\n"
 			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");

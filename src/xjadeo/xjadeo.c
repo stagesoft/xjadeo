@@ -338,11 +338,12 @@ void event_loop (void) {
 
 #ifdef TIMEMAP
 		newFrame = floor ((double)newFrame * timescale) + timeoffset;
-		// TODO: calc newFrames/frames instead of while-loop
-		while (newFrame > frames && wraparound && frames != 0)
-			newFrame -= frames;
-		while (newFrame < 0 && wraparound && frames != 0)
-			newFrame += frames;
+		if(wraparound && frames != 0)
+		{
+			newFrame %= frames;
+			if(newFrame < 0)
+				newFrame += frames;
+		}
 #endif
 
 		offFrame = newFrame + ts_offset;
@@ -448,31 +449,34 @@ size_t video_buffer_size() {
 }
 
 void init_moviebuffer (void) {
-	if (buffer) free (buffer);
+	if (buffer) av_free (buffer);
 	if (want_debug)
 		printf("DEBUG: init_moviebuffer - render_fmt: %i\n",render_fmt);
 	/* Determine required buffer size and allocate buffer */
 #ifdef CROPIMG
-	vbufsize = avpicture_get_size (render_fmt, movie_width*2, movie_height);
+	vbufsize = av_image_get_buffer_size (render_fmt, movie_width*2, movie_height, 64);
 #else
-	vbufsize = avpicture_get_size (render_fmt, movie_width, movie_height);
+	vbufsize = av_image_get_buffer_size (render_fmt, movie_width, movie_height, 64);
 #endif
-	buffer = (uint8_t *)calloc (1, vbufsize);
+	buffer = (uint8_t *)av_malloc (vbufsize);
 
 	// Assign appropriate parts of buffer to image planes in pFrameFMT
 	if (pFrameFMT) {
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(51, 63, 100)
 		avpicture_fill ((AVPicture *)pFrameFMT, buffer, render_fmt, movie_width, movie_height);
+#else
+		av_image_fill_arrays (pFrameFMT->data, pFrameFMT->linesize, buffer, render_fmt, movie_width, movie_height, 64);
+#endif
 		pSWSCtx = sws_getContext (pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, movie_width, movie_height, render_fmt, SWS_BICUBIC, NULL, NULL, NULL);
 	}
 	render_empty_frame (0, 0);
 }
 
 void avinit (void) {
-	av_register_all ();
+	register_codecs_compat();
 #if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(53, 20, 0)
 	avcodec_init ();
 #endif
-	avcodec_register_all ();
 	if (!want_avverbose) av_log_set_level (AV_LOG_QUIET);
 }
 
@@ -493,7 +497,7 @@ static uint64_t parse_pts_from_frame (AVFrame *f) {
 
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 49, 100)
 	if (pts == AV_NOPTS_VALUE) {
-		pts = av_frame_get_best_effort_timestamp (f);
+		pts = f->best_effort_timestamp;
 		if (pts != AV_NOPTS_VALUE) {
 			if (!(pts_warn & 1) && !want_quiet)
 				fprintf(stderr, "PTS: Best effort.\n");
@@ -505,7 +509,11 @@ static uint64_t parse_pts_from_frame (AVFrame *f) {
 #endif
 
 	if (pts == AV_NOPTS_VALUE) {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 61, 100)
 		pts = f->pkt_pts;
+#else
+		pts = f->pts;
+#endif
 		if (pts != AV_NOPTS_VALUE) {
 			if (!(pts_warn & 2) && !want_quiet)
 				fprintf(stderr, "Used PTS from packet instead frame's PTS.\n");
@@ -588,9 +596,7 @@ static int seek_frame (AVPacket *packet, int64_t framenumber) {
 			seek = av_seek_frame (pFormatCtx, videoStream, fidx[framenumber].seekpts, AVSEEK_FLAG_BACKWARD);
 		}
 
-		if (pCodecCtx->codec->flush) {
-			avcodec_flush_buffers (pCodecCtx);
-		}
+		maybe_avcodec_flush_buffers (pCodecCtx);
 
 		if (seek < 0) {
 			if (!want_quiet)
@@ -606,14 +612,14 @@ static int seek_frame (AVPacket *packet, int64_t framenumber) {
 			if (err != AVERROR_EOF) {
 				if (!want_quiet)
 					fprintf(stderr, "Read failed (during seek)\n");
-				av_free_packet (packet);
+				av_packet_unref (packet);
 				return -1;
 			} else {
 				--bailout;
 			}
 		}
 		if (packet->stream_index != videoStream) {
-			av_free_packet (packet);
+			av_packet_unref (packet);
 			continue;
 		}
 
@@ -632,11 +638,27 @@ static int seek_frame (AVPacket *packet, int64_t framenumber) {
 		int frameFinished = 0;
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(52, 21, 0)
 		err = avcodec_decode_video (pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
-#else
+#elif LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 106, 102)
 		err = avcodec_decode_video2 (pCodecCtx, pFrame, &frameFinished, packet);
+#else
+		err = avcodec_send_packet (pCodecCtx, packet);
+		if (err == AVERROR_EOF) {
+			err = 0;
+		}
+		frameFinished = 0;
+		if (err >= 0) {
+			err = avcodec_receive_frame (pCodecCtx, pFrame);
+			if (err < 0) {
+				if (err == AVERROR(EAGAIN) || err == AVERROR_EOF) {
+					err = 0;
+				}
+			} else {
+				frameFinished = 1;
+			}
+		}
 #endif
 
-		av_free_packet (packet);
+		av_packet_unref (packet);
 
 		if (err < 0) {
 			if (!want_quiet)
@@ -787,7 +809,7 @@ static int index_frames () {
 	while (!want_noindex && av_read_frame (pFormatCtx, &packet) >= 0) {
 		if (abort_indexing) {
 			if (!want_quiet) fprintf(stderr, "Indexing aborted.\n");
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 			return -1;
 		}
 #ifdef USE_DUP_PACKET
@@ -798,7 +820,7 @@ static int index_frames () {
 		}
 #endif
 		if (packet.stream_index != videoStream) {
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 			continue;
 		}
 
@@ -818,14 +840,14 @@ static int index_frames () {
 		if (ts == AV_NOPTS_VALUE) {
 			if (!want_quiet)
 				fprintf(stderr, "Index error: no PTS, nor DTS.\n");
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 			error |= 1;
 			break;
 		}
 
 		const uint8_t key = (packet.flags & AV_PKT_FLAG_KEY) ? 1 : 0;
 		if (add_idx (ts, packet.pos, key, packet.duration, tb)) {
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 			break;
 		}
 
@@ -837,7 +859,7 @@ static int index_frames () {
 			}
 		}
 
-		av_free_packet (&packet);
+		av_packet_unref (&packet);
 
 		if (++keyframe_interval > max_keyframe_interval) {
 			max_keyframe_interval = keyframe_interval;
@@ -912,9 +934,7 @@ static int index_frames () {
 			error |= 16;
 			break;
 		}
-		if (pCodecCtx->codec->flush) {
-			avcodec_flush_buffers (pCodecCtx);
-		}
+		maybe_avcodec_flush_buffers (pCodecCtx);
 
 		int err = 0;
 		int bailout = 100;
@@ -924,7 +944,7 @@ static int index_frames () {
 				if (err == AVERROR_EOF) {
 					fprintf(stderr, "IDX2: Read/Seek compensate for premature EOF\n");
 					fidx[i].key = 0;
-					av_free_packet (&packet);
+					av_packet_unref (&packet);
 					break;
 				}
 				fprintf(stderr, "IDX2: Read failed @ %"PRId64" / %"PRId64".\n", i, fcnt);
@@ -942,11 +962,27 @@ static int index_frames () {
 			if (packet.stream_index==videoStream) {
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(52, 21, 0)
 				err = avcodec_decode_video (pCodecCtx, pFrame, &got_pic, packet.data, packet.size);
-#else
+#elif LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 106, 102)
 				err = avcodec_decode_video2 (pCodecCtx, pFrame, &got_pic, &packet);
+#else
+				err = avcodec_send_packet (pCodecCtx, &packet);
+				if (err == AVERROR_EOF) {
+					err = 0;
+				}
+				got_pic = 0;
+				if (err >= 0) {
+					err = avcodec_receive_frame (pCodecCtx, pFrame);
+					if (err < 0) {
+						if (err == AVERROR(EAGAIN) || err == AVERROR_EOF) {
+							err = 0;
+						}
+					} else {
+						got_pic = 1;
+					}
+				}
 #endif
 			}
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 
 			if (err < 0) {
 				break;
@@ -969,7 +1005,7 @@ static int index_frames () {
 		if (err < 0 || !bailout) continue;
 
 		fidx[i].frame_pts = pts;
-		fidx[i].frame_pos = av_frame_get_pkt_pos (pFrame);
+		fidx[i].frame_pos = pFrame->pkt_pos;
 		if (pts != AV_NOPTS_VALUE) {
 #if 0 // DEBUG
 			printf("FN %"PRId64", PKT-PTS %"PRId64" FRM-PTS: %"PRId64"\n", i, fidx[i].pkt_pts, fidx[i].frame_pts);
@@ -1034,16 +1070,14 @@ static int index_frames () {
 			printf("NOBYTE 2\n");
 			break;
 		}
-		if (pCodecCtx->codec->flush) {
-			avcodec_flush_buffers (pCodecCtx);
-		}
+		maybe_avcodec_flush_buffers (pCodecCtx);
 
 		int64_t pts = AV_NOPTS_VALUE;
 		while (!got_pic) {
 			if (av_read_frame (pFormatCtx, &packet) < 0) {
 				byte_seek = 0;
 				printf("NOBYTE 3\n");
-				av_free_packet (&packet);
+				av_packet_unref (&packet);
 				break;
 			}
 
@@ -1063,7 +1097,7 @@ static int index_frames () {
 #endif
 			}
 
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 
 			if (err < 0) {
 				byte_seek = 0;
@@ -1099,14 +1133,12 @@ static int index_frames () {
 		} else {
 			av_seek_frame (pFormatCtx, videoStream, fidx[i].seekpts, AVSEEK_FLAG_BACKWARD);
 		}
-		if (pCodecCtx->codec->flush) {
-			avcodec_flush_buffers (pCodecCtx);
-		}
+		maybe_avcodec_flush_buffers (pCodecCtx);
 		while (!got_pic) {
 
 			if (av_read_frame (pFormatCtx, &packet) < 0) {
 				fprintf(stderr, "IDX2: Read failed.\n");
-				av_free_packet (&packet);
+				av_packet_unref (&packet);
 				break;
 			}
 
@@ -1124,7 +1156,7 @@ static int index_frames () {
 				avcodec_decode_video2 (pCodecCtx, pFrame, &got_pic, &packet);
 #endif
 			}
-			av_free_packet (&packet);
+			av_packet_unref (&packet);
 			if (!got_pic) {
 				//--bailout;
 				continue;
@@ -1173,9 +1205,7 @@ static int index_frames () {
 	}
 
 	av_seek_frame (pFormatCtx, videoStream, 0, AVSEEK_FLAG_BACKWARD);
-	if (pCodecCtx->codec->flush) {
-		avcodec_flush_buffers (pCodecCtx);
-	}
+	maybe_avcodec_flush_buffers (pCodecCtx);
 	if (!error) {
 		scan_complete = 1;
 	}
@@ -1252,8 +1282,12 @@ static void clear_info () {
 
 int open_movie (char* file_name) {
 	int i;
-	AVCodec		*pCodec;
-	AVStream	*av_stream;
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 100)
+	AVCodec* pCodec;
+#else
+	AVCodec const* pCodec;
+#endif
+	AVStream* av_stream;
 
 	if (pFrameFMT) {
 		close_movie ();
@@ -1320,7 +1354,11 @@ int open_movie (char* file_name) {
 
 	/* Find the first video stream */
 	for (i = 0; i < pFormatCtx->nb_streams; ++i)
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(57, 33, 100)
 		if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+#else
+		if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+#endif
 			videoStream = i;
 			break;
 		}
@@ -1339,7 +1377,6 @@ int open_movie (char* file_name) {
 	 * hence here AVRational fractions are inverse.
 	 */
 	framerate = 0;
-#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(55, 0, 100) // 9cf788eca8ba (merge a75f01d7e0)
 	{
 		AVRational fr = av_stream->r_frame_rate;
 		if (fr.den > 0 && fr.num > 0) {
@@ -1348,16 +1385,6 @@ int open_movie (char* file_name) {
 			fr_Q.num = fr.den;
 		}
 	}
-#else
-	{
-		AVRational fr = av_stream_get_r_frame_rate (av_stream);
-		if (fr.den > 0 && fr.num > 0) {
-			framerate = av_q2d (fr);
-			fr_Q.den = fr.num;
-			fr_Q.num = fr.den;
-		}
-	}
-#endif
 	if (framerate < 1 || framerate > 1000) {
 		AVRational fr = av_stream->avg_frame_rate;
 		if (fr.den > 0 && fr.num > 0) {
@@ -1416,7 +1443,12 @@ int open_movie (char* file_name) {
 	}
 
 	// Get a pointer to the codec context for the video stream
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(57, 33, 100)
 	pCodecCtx=pFormatCtx->streams[videoStream]->codec;
+#else
+	pCodecCtx = avcodec_alloc_context3(NULL);
+	avcodec_parameters_to_context (pCodecCtx, pFormatCtx->streams[videoStream]->codecpar);
+#endif
 
 	if (!want_quiet) {
 		fprintf(stdout, "frame rate: %g\n", framerate);
@@ -1438,8 +1470,13 @@ int open_movie (char* file_name) {
 	float sample_aspect = 1.0;
 	if (av_stream->sample_aspect_ratio.num)
 		sample_aspect = av_q2d (av_stream->sample_aspect_ratio);
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(57, 33, 100)
 	else if (av_stream->codec->sample_aspect_ratio.num)
 		sample_aspect = av_q2d (av_stream->codec->sample_aspect_ratio);
+#else
+	else if (av_stream->codecpar->sample_aspect_ratio.num)
+		sample_aspect = av_q2d (av_stream->codecpar->sample_aspect_ratio);
+#endif
 	else
 		sample_aspect = 1.0;
 
@@ -1496,7 +1533,7 @@ int open_movie (char* file_name) {
 	if (pFrame == NULL) {
 		if (!want_quiet)
 			fprintf(stderr, "Cannot allocate video frame buffer\n");
-		avcodec_close (pCodecCtx);
+		avcodec_free_context (&pCodecCtx);
 		avformat_close_input (&pFormatCtx);
 		pFormatCtx = NULL;
 		pCodecCtx = NULL;
@@ -1508,7 +1545,7 @@ int open_movie (char* file_name) {
 		if (!want_quiet)
 			fprintf(stderr, "Cannot allocate display frame buffer\n");
 		av_free (pFrame);
-		avcodec_close (pCodecCtx);
+		avcodec_free_context (&pCodecCtx);
 		avformat_close_input (&pFormatCtx);
 		pFormatCtx = NULL;
 		pCodecCtx = NULL;
@@ -1533,9 +1570,15 @@ int open_movie (char* file_name) {
 	if (av_stream->sample_aspect_ratio.num)
 		sprintf(OSD_nfo_geo[2], "SAR: %d : %d",
 				av_stream->sample_aspect_ratio.num, av_stream->sample_aspect_ratio.den);
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(57, 33, 100)
 	else if (av_stream->codec->sample_aspect_ratio.num)
 		sprintf(OSD_nfo_geo[2], "SAR: %d : %d",
 				av_stream->codec->sample_aspect_ratio.num, av_stream->codec->sample_aspect_ratio.den);
+#else
+	else if (av_stream->codecpar->sample_aspect_ratio.num)
+		sprintf(OSD_nfo_geo[2], "SAR: %d : %d",
+				av_stream->codecpar->sample_aspect_ratio.num, av_stream->codecpar->sample_aspect_ratio.den);
+#endif
 	else
 		sprintf(OSD_nfo_geo[2], "SAR: unknown (1 : 1)");
 
@@ -1601,7 +1644,7 @@ static void render_empty_frame (int blit, int splashagain) {
 			buffer[i+3] = 0xff;
 		}
 	} else {
-		memset (buffer, 0, avpicture_get_size (render_fmt, movie_width, movie_height));
+		memset (buffer, 0, av_image_get_buffer_size (render_fmt, movie_width, movie_height, 1));
 	}
 #ifdef DRAW_CROSS
 	int x,y;
@@ -1818,7 +1861,7 @@ int close_movie () {
 	sws_freeContext (pSWSCtx);
 
 	// Free the formatted image
-	if (buffer) free (buffer);
+	if (buffer) av_free (buffer);
 	buffer=NULL;
 	if (pFrameFMT)
 		av_free (pFrameFMT);
@@ -1830,7 +1873,7 @@ int close_movie () {
 	pFrame=NULL;
 
 	//Close the codec
-	avcodec_close (pCodecCtx);
+	avcodec_free_context (&pCodecCtx);
 
 	//Close the video file
 	avformat_close_input (&pFormatCtx);
