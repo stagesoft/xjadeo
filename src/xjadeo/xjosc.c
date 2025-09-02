@@ -347,6 +347,15 @@ static int oscb_remotecmd (const char *path, const char *types, lo_arg **argv, i
   return(0);
 }
 
+#ifdef CUEMS || OSC_DOC_ALL
+static int oscb_ontop (const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data){
+  if (want_verbose) fprintf(stderr, "OSC: %s <- i:%i\n", path, argv[0]->i);
+    int ontop=argv[0]->i;
+    Xontop(ontop);
+  return(0);
+}
+#endif
+
 // X11 options
 #if 0
 static int oscb_fullscreen (const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data){
@@ -400,6 +409,10 @@ static struct osc_command OSCC[] = {
   {"/jadeo/fps", "f", &oscb_fps, "Set the screen update frequency (-f, set fps)"},
   {"/jadeo/offset", "i", &oscb_offset, "Set time-offset as frame-number (-o, set offset)"},
   {"/jadeo/offset", "s", &oscb_offsetsmpte, "Set time-offset as timecode (-o, set offset)"},
+
+#if defined CUEMS || defined OSC_DOC_ALL
+  {"/jadeo/ontop", "i", &oscb_ontop, "Set ontop window property (-a, set ontop)"},
+#endif
 
   {"/jadeo/osd/font", "s", &oscb_osdfont, "Specify a TrueType Font file to be used for rendering On-Screen-Display text (osd font)"},
   {"/jadeo/osd/timecode", "i", &oscb_osdsmtpe, "If set to 1: render timecode on screen; set to 0 to disable (-i, osd smpte)"},
