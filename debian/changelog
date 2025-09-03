@@ -1,6 +1,15 @@
+xjadeo (0.8.14~cuems-2) UNRELEASED; urgency=medium
+
+  * add osc /ontop control
+  * 
+
+ -- ion <ion@stagelab.coop>  Tue, 02 Sep 2025 19:53:40 +0200
+
 xjadeo (0.8.14~cuems) buster; urgency=medium
 
-  * Imported Upstream version 0.8.14
+  
+  
+  ç* Imported Upstream version 0.8.14
     * Fix JACK Transport when using pipewire
     * Update build-script (disable QT GUI)
 
@@ -30,6 +39,7 @@ xjadeo (0.8.9~cuems-2) buster; urgency=medium
  -- Ion Reguera <ion@stagelab.net>  Sat, 23 Jan 2021 21:23:16 +0100
 
 xjadeo (0.8.9~cuems-1) buster; urgency=medium
+
 
   * Imported Upstream version 0.8.9
   * added stagesoft/cuems custom modifications https://github.com/stagesoft/stagesoft-project
