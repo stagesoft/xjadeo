@@ -16,7 +16,8 @@
 #include <cstdlib>
 
 #ifdef HAVE_LIBMTCMASTER
-#include <mtcmaster.h>
+#include "interface.h"
+#include "MtcMaster_class.h"
 #endif
 
 using namespace xjadeo;
@@ -295,20 +296,30 @@ bool test_MTCDecoder() {
     // 6: Hours low nibble + type (0x00)
     // 7: Hours high nibble (0x00)
     
+    // Test quarter-frame messages for frame 1234 at 25fps
+    // Frame 1234 = 00:00:49:09 (25fps)
+    // MTC format: upper nibble = quarter-frame index (0-7), lower nibble = data
     uint8_t quarterFrames[] = {
-        0x09,  // Frame low (9)
-        0x00,  // Frame high (0)
-        0x01,  // Seconds low (1)
-        0x03,  // Seconds high (3) -> 31 seconds
-        0x00,  // Minutes low (0)
-        0x00,  // Minutes high (0)
-        0x00,  // Hours low + type (0, 25fps = type 1)
-        0x00   // Hours high (0)
+        0x09,  // Quarter-frame 0: Frame low nibble (9)
+        0x10,  // Quarter-frame 1: Frame high nibble (0)
+        0x21,  // Quarter-frame 2: Seconds low nibble (1)
+        0x33,  // Quarter-frame 3: Seconds high nibble (3) -> 49 seconds (0x31)
+        0x40,  // Quarter-frame 4: Minutes low nibble (0)
+        0x50,  // Quarter-frame 5: Minutes high nibble (0)
+        0x60,  // Quarter-frame 6: Hours low nibble (0)
+        0x72   // Quarter-frame 7: Hours high nibble bit 0 (0), type bits 1-2 (type 1 = 01)
     };
     
     // Process all quarter-frames
+    bool complete = false;
     for (int i = 0; i < 8; i++) {
-        decoder.processByte(quarterFrames[i]);
+        complete = decoder.processByte(quarterFrames[i]);
+    }
+    
+    // Verify complete timecode was received
+    if (!complete) {
+        std::cerr << "MTCDecoder test FAILED: Complete timecode not received" << std::endl;
+        return false;
     }
     
     // Check result
@@ -338,7 +349,7 @@ int main(int argc, char** argv) {
     }
     
     // Test 2: MTC Reception (requires libmtcmaster and ALSA)
-    if (argc > 1 && strcmp(argv[1], "--skip-mtc") != 0) {
+    if (argc == 1 || (argc > 1 && strcmp(argv[1], "--skip-mtc") != 0)) {
         if (!test_MTC_Reception()) {
             allPassed = false;
         }

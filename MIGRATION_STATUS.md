@@ -19,6 +19,14 @@ The migration follows a gradual approach:
 - ✅ `xjosc.c` - Replaced by `OSCRemoteControl`
 - ✅ `gtime.c` - Replaced by `cpp/utils/TimeUtils.cpp`
 - ✅ `smpte.c` - Replaced by `cpp/utils/SMPTEUtils.cpp` + `SMPTEWrapper.cpp`
+- ✅ `midi.c` - Replaced by `cpp/sync/MIDISyncSource.cpp`, `ALSASeqMIDIDriver.cpp`, `MTCDecoder.cpp`
+- ✅ `ltc-jack.c` - Removed (JACK support removed, not used by C++ codebase)
+- ✅ `xjadeo.c` - Replaced by `cpp/input/VideoFileInput.cpp`, `cpp/XjadeoApplication.cpp`, `cpp/layer/VideoLayer.cpp`
+  - **Note**: Video globals consolidated into `common.c` for C compatibility (display backends, SMPTEWrapper)
+- ✅ `display_mac.c` - Removed (Linux-only project, macOS not supported)
+- ✅ `display_sdl.c` - Removed (SDL display not being migrated, Linux-only project)
+- ✅ `display_gl_win.c` - Removed (Linux-only project, Windows not supported)
+- ✅ `display_gl_osx.m` - Removed (Linux-only project, macOS not supported)
 
 ### Major Components Migrated (✅ Completed)
 - ✅ **Application Core**: `XjadeoApplication`, `ConfigurationManager`, `Logger`
@@ -32,11 +40,10 @@ The migration follows a gradual approach:
 - ✅ **Testing**: Unit and integration test framework
 
 ### Remaining C Code (⏳ In Progress)
-- ⏳ `xjadeo.c` - Legacy video playback logic (mostly replaced by C++ classes, kept for compatibility)
-  - **Status**: Core functionality migrated to `VideoFileInput`, `XjadeoApplication`, `VideoLayer`
-  - **Remaining**: Some utility functions and legacy event loop (not used by C++ codebase)
-  - **Note**: This file is still in build but not actively used by `cpp/main.cpp`
-- ⏳ `midi.c` - MIDI implementation (C++ version complete, C version still in build for testing)
+- ✅ `xjadeo.c` - **REMOVED** from build (replaced by `VideoFileInput`, `XjadeoApplication`, `VideoLayer`)
+  - **Note**: Video globals consolidated into `common.c` for C compatibility (display backends, SMPTEWrapper)
+  - **Status**: `VideoFileInput` updates C globals when opening videos for compatibility
+- ✅ `midi.c` - **REMOVED** from build (C++ version complete and tested)
 - ✅ `smpte.c` - **MIGRATED** to `cpp/utils/SMPTEUtils.cpp` + `SMPTEWrapper.cpp` (removed from build, C code uses C++ via wrapper)
 - ✅ `gtime.c` - **MIGRATED** to `cpp/utils/TimeUtils.cpp` (using std::chrono, removed from build)
 - ⏳ Display backends - Platform-specific X11/GLX code (Linux only) - **KEEP IN C** per hybrid migration strategy
@@ -93,8 +100,11 @@ The migration follows a gradual approach:
 
 ### Core Functionality
 - `main.c` - ✅ **REMOVED** from build (replaced by `cpp/main.cpp`)
-- `xjadeo.c` - Core video playback logic (partially replaced, **not used by C++ codebase**)
-- `common.c` - Common utilities (legacy UI functions, **not used by C++ codebase**)
+- `xjadeo.c` - ✅ **REMOVED** from build (replaced by `VideoFileInput`, `XjadeoApplication`, `VideoLayer`)
+- `common.c` - C compatibility file containing:
+  - Video globals (movie_width, framerate, frames, etc.) - set by C++ `VideoFileInput`
+  - UI functions (ui_sync_*, ui_osd_*) - used by C display backends
+  - Stubs for removed C code (JACK, MIDI, LTC-JACK) - prevents linker errors
 - `configfile.c` - ✅ **REMOVED** from build (replaced by `ConfigurationManager`)
 
 ### Display Backends
@@ -103,8 +113,10 @@ The migration follows a gradual approach:
 - `display_glx.c` - GLX OpenGL context (Linux only, **KEEP IN C** per hybrid strategy)
 - `display_x_dnd.c` - X11 drag-and-drop (Linux only)
 - `display_x_dialog.c` - X11 dialogs (Linux only)
-- `display_mac.c` - macOS display (not being migrated)
-- `display_sdl.c` - SDL display (not being migrated)
+- `display_mac.c` - ✅ **REMOVED** (Linux-only project, macOS not supported)
+- `display_sdl.c` - ✅ **REMOVED** (SDL display not being migrated, Linux-only project)
+- `display_gl_win.c` - ✅ **REMOVED** (Linux-only project, Windows not supported)
+- `display_gl_osx.m` - ✅ **REMOVED** (Linux-only project, macOS not supported)
 
 ### Remote Control
 - `remote.c` - ✅ **REMOVED** from build (replaced by `RemoteControl`/`OSCRemoteControl`)
@@ -112,8 +124,8 @@ The migration follows a gradual approach:
 - `mqueue.c` - Message queue remote control (not yet migrated)
 
 ### Sync Sources
-- `midi.c` - ✅ **C++ version complete** (C code still in build but unused by C++ codebase)
-- `ltc-jack.c` - LTC sync (JACK removed, **not used by C++ codebase**, likely safe to remove)
+- `midi.c` - ✅ **REMOVED** from build (C++ version complete and tested, replaced by `MIDISyncSource`, `ALSASeqMIDIDriver`, `MTCDecoder`)
+- `ltc-jack.c` - ✅ **REMOVED** from build (JACK support removed, not used by C++ codebase)
 
 ### Utilities
 - `freetype.c` - Freetype utilities (C++ `OSDRenderer` uses Freetype C API directly - **KEEP IN C**)
@@ -137,12 +149,13 @@ The following C functions/globals are still accessed by C++ code:
 - `want_verbose` - Verbose mode flag
 - `want_debug` - Debug mode flag
 
-### MIDI Functions (from `midi.c`) - ✅ **MIGRATED TO C++**
+### MIDI Functions (from `midi.c`) - ✅ **MIGRATED TO C++** (C file removed)
 - `midi_connected()` - Check MIDI connection (use `MIDISyncSource` instead)
 - `midi_poll_frame()` - Poll MIDI for frame (use `MIDISyncSource` instead)
 - `midi_open()` - Open MIDI connection (use `MIDISyncSource` instead)
 - `midi_close()` - Close MIDI connection (use `MIDISyncSource` instead)
 - `midi_driver_name()` - Get MIDI driver name (use `MIDISyncSource` instead)
+- **Note**: Stubs provided in `common.c` for legacy C code compatibility (not used by C++ codebase)
 
 ## Migration Priorities
 
@@ -150,7 +163,8 @@ The following C functions/globals are still accessed by C++ code:
 1. **MIDI Sync** - ✅ **COMPLETE** - Migrated `midi.c` to pure C++ `MIDISyncSource` (ALSA Sequencer only)
    - ✅ Core architecture complete (MTCDecoder, MIDIDriver, MIDISyncSource)
    - ✅ ALSA Sequencer driver implementation complete
-   - ✅ Removed C global dependencies (midi_clkadj, delay, waare 
+   - ✅ Removed C global dependencies (midi_clkadj, delay, waare)
+   - ✅ `midi.c` removed from build (C++ version complete and tested) 
 2. **Main Entry Point** - ✅ **COMPLETE** - Migration from `main.c` to `cpp/main.cpp`
    - ✅ `main.c` removed from build
    - ✅ Using `cpp/main.cpp` as entry point
@@ -160,13 +174,13 @@ The following C functions/globals are still accessed by C++ code:
 4. **Remote Control** - ✅ **COMPLETE** - Migration from `remote.c`/`xjosc.c` to `OSCRemoteControl`
    - ✅ `remote.c` and `xjosc.c` removed from build
    - ✅ All remote control handled through C++ `OSCRemoteControl` and `RemoteCommandRouter`
-5. **Video Playback Core** - ✅ **SUBSTANTIALLY COMPLETE**
+5. **Video Playback Core** - ✅ **COMPLETE**
    - ✅ Core video file handling: `VideoFileInput` class
    - ✅ Frame decoding and seeking: Implemented in `VideoFileInput`
    - ✅ Event loop: `XjadeoApplication::run()`
    - ✅ Layer management: `LayerManager` and `VideoLayer`
-   - ⏳ Legacy `xjadeo.c` still in build but not used by C++ codebase
-   - **Note**: Remaining `xjadeo.c` code is legacy and can be removed once fully tested
+   - ✅ `xjadeo.c` **REMOVED** from build (replaced by C++ classes)
+   - ✅ Minimal `video_globals.c` created for C compatibility (display backends, SMPTEWrapper)
 
 ### Medium Priority (Utilities)
 6. **SMPTE Utilities** - ✅ **MIGRATED** to `cpp/utils/SMPTEUtils.cpp` + `SMPTEWrapper.cpp` (C code uses C++ via wrapper, `smpte.c` removed from build)
@@ -182,8 +196,9 @@ The following C functions/globals are still accessed by C++ code:
 ### Removed
 - ❌ JACK support - Completely removed
   - `JACKSyncSource` deleted
-  - `jack.c`, `common_jack.c`, `weak_libjack.c` removed from build
+  - `jack.c`, `common_jack.c`, `weak_libjack.c`, `weak_libjack.h`, `ltc-jack.c` **DELETED** from source tree
   - JACK dependencies removed from CMakeLists.txt
+  - All JACK-related files removed (were not in build, just leftover source files)
 
 ### To Be Removed
 - `main.c` - ✅ **REMOVED** from build (using `cpp/main.cpp` instead)
@@ -208,8 +223,8 @@ The following C functions/globals are still accessed by C++ code:
 - **Implementation**: C++ classes wrap C APIs (FFmpeg, ALSA, X11/GLX) while keeping the underlying C code for performance and compatibility (SMPTE, time)
 - C code is currently used for:
   - Platform-specific display backends (Linux X11/GLX only - Windows/macOS not supported) - **KEEP IN C**
-  - MIDI implementation (C++ version complete, C code still in build but unused)
   - Freetype font loading (C++ `OSDRenderer` uses Freetype C API directly) - **KEEP IN C**
+  - Compatibility code in `common.c` (video globals, UI functions, stubs) for C display backends
 - The architecture is designed to allow gradual migration without breaking functionality
 - **Platform Support**: Only Linux is supported. Windows and macOS implementations are not planned.
 
@@ -247,7 +262,7 @@ The following C functions/globals are still accessed by C++ code:
 
 ### Notes
 - ✅ ALSA Sequencer MIDI driver ported from C to C++ - **COMPLETE**
-- ⏳ `midi.c` still in build but not used by C++ codebase (can be removed after testing)
-- ⚠️ MIDI functions in `CLegacyBridge.h` are marked as deprecated (for C code compatibility only)
+- ✅ `midi.c` **REMOVED** from build (C++ version complete and tested)
+- ⚠️ MIDI functions in `CLegacyBridge.h` are marked as deprecated (stubs provided in `common.c` for legacy C code compatibility)
 - ✅ C++ code uses `MIDISyncSource` which is pure C++ implementation
 

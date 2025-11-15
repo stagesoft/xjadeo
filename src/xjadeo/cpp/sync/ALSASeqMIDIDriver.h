@@ -12,7 +12,7 @@
 
 // Forward declarations for ALSA
 struct snd_seq;
-typedef struct snd_seq snd_seq_t;
+typedef struct _snd_seq snd_seq_t;
 
 namespace xjadeo {
 

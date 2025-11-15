@@ -132,12 +132,19 @@ void OpenGLDisplay::render(LayerManager* layerManager, OSDManager* osdManager) {
 
     // Get all layers sorted by z-order
     auto layers = layerManager->getLayersSortedByZOrder();
+    
+    // Convert to const vector for rendering
+    std::vector<const VideoLayer*> constLayers;
+    constLayers.reserve(layers.size());
+    for (auto* layer : layers) {
+        constLayers.push_back(layer);
+    }
 
     // Set viewport
     renderer_->setViewport(0, 0, windowWidth_, windowHeight_);
 
     // Composite all layers
-    renderer_->compositeLayers(layers);
+    renderer_->compositeLayers(constLayers);
 
     // Render OSD if available
     if (osdManager && osdRenderer_) {

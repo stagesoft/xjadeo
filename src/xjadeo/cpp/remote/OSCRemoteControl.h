@@ -7,11 +7,9 @@
 #include <string>
 #include <vector>
 
-// Forward declaration for liblo types
-struct lo_server_struct;
-typedef struct lo_server_struct* lo_server;
-struct lo_message;
-typedef struct lo_message lo_message;
+extern "C" {
+#include <lo/lo_lowlevel.h>
+}
 
 namespace xjadeo {
 

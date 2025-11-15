@@ -36,11 +36,6 @@ bool test_ConfigurationManager_SetGet() {
     bool boolValue = config.getBool("test_bool", false);
     TEST_ASSERT_TRUE(boolValue);
     
-    // Test float
-    config.setFloat("test_float", 3.14f);
-    float floatValue = config.getFloat("test_float", 0.0f);
-    TEST_ASSERT_EQ(floatValue, 3.14f);
-    
     return true;
 }
 

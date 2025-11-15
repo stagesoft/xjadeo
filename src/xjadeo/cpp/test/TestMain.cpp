@@ -24,6 +24,8 @@ extern bool test_Integration_LayerManagerWithMultipleLayers();
 extern bool test_Integration_VideoLayerTimeScaling();
 extern bool test_Integration_LayerProperties();
 
+extern bool test_MTCDecoder();
+
 using namespace xjadeo::test;
 
 int main() {
@@ -50,6 +52,8 @@ int main() {
     TestFramework::instance().addTest("Integration_LayerManagerWithMultipleLayers", test_Integration_LayerManagerWithMultipleLayers);
     TestFramework::instance().addTest("Integration_VideoLayerTimeScaling", test_Integration_VideoLayerTimeScaling);
     TestFramework::instance().addTest("Integration_LayerProperties", test_Integration_LayerProperties);
+    
+    TestFramework::instance().addTest("MTCDecoder", test_MTCDecoder);
     
     return TestFramework::instance().runAll();
 }

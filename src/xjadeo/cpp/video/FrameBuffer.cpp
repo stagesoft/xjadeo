@@ -32,10 +32,10 @@ bool FrameBuffer::allocate(const FrameInfo& info) {
             avFormat = AV_PIX_FMT_RGB24;
             break;
         case PixelFormat::RGBA32:
-            avFormat = AV_PIX_FMT_RGBA32;
+            avFormat = AV_PIX_FMT_RGB32;
             break;
         case PixelFormat::BGRA32:
-            avFormat = AV_PIX_FMT_BGRA32;
+            avFormat = AV_PIX_FMT_BGR32;
             break;
         case PixelFormat::UYVY422:
             avFormat = AV_PIX_FMT_UYVY422;

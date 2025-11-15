@@ -196,9 +196,9 @@ int remote_mode =0;	/* 0: undirectional ; >0: bidir
 			 */
 
 #ifdef HAVE_MIDI
-char midiid[128] = "-2";  /* --midi # -1: autodetect -2: jack-transport, -3: none/userFrame */
+char midiid[128] = "-1";  /* --midi # -1: autodetect -2: jack-transport (removed), -3: none/userFrame */
 int midi_clkconvert =0;	  /* --midifps [0:MTC|1:VIDEO|2:RESAMPLE] */
-char *midi_driver = NULL; /* --mididriver */
+char *midi_driver = NULL; /* --mididriver - will be set to "ALSA-Sequencer" if not specified */
 #endif
 
 int have_dropframes =0; /* detected from MTC;  TODO: force to zero if jack or user TC */
@@ -910,13 +910,18 @@ static void *xjadeo (void *arg) {
 
 	/* setup sync source */
 #ifdef HAVE_MIDI
+	// Default to ALSA Sequencer if no driver specified
+	if (!midi_driver) {
+		midi_driver = strdup("ALSA-Sequencer");
+	}
 	midi_choose_driver(midi_driver);
 
 #ifdef JACK_SESSION
-	if (jack_uuid && !strcmp(midi_driver_name(), "JACK-MIDI")) {
-		// don't auto-connect jack-midi on session restore.
-		if (atoi(midiid) == 0) midiid[0]='\0';
-	}
+	// JACK-MIDI support removed - this code is no longer needed
+	// if (jack_uuid && !strcmp(midi_driver_name(), "JACK-MIDI")) {
+	//	// don't auto-connect jack-midi on session restore.
+	//	if (atoi(midiid) == 0) midiid[0]='\0';
+	//}
 #endif
 #endif
 
@@ -932,6 +937,7 @@ static void *xjadeo (void *arg) {
 		}
 	}
 #ifdef HAVE_MIDI
+	// Default to ALSA Sequencer MIDI sync if not explicitly disabled
 	else if (atoi(midiid) >= -1 ) {
 		if (!want_quiet)
 			printf("using MTC as sync-source.\n");
@@ -946,9 +952,10 @@ static void *xjadeo (void *arg) {
 		} else
 #endif
 			if (use_jack) {
+				// JACK support removed - warn user and fall back to manual sync
 				if (!want_quiet)
-					printf("using JACK-transport as sync source.\n");
-				open_jack();
+					fprintf(stderr, "Warning: JACK-transport support has been removed. Using manual sync instead.\n");
+				// open_jack(); // JACK removed
 			}
 	if (!no_initial_sync) {
 		jack_autostart = 1;

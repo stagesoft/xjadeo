@@ -101,7 +101,6 @@ bool OpenGLRenderer::uploadFrameToTexture(const FrameBuffer& frame) {
     glBindTexture(GL_TEXTURE_2D, textureId_);
     
     // Handle different pixel formats
-    const FrameInfo& info = frame.info();
     GLenum format = GL_RGB;
     GLenum type = GL_UNSIGNED_BYTE;
     

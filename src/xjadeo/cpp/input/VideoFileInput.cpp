@@ -1,5 +1,6 @@
 #include "VideoFileInput.h"
 #include "../../ffcompat.h"
+#include "../utils/CLegacyBridge.h"
 #include <cstring>
 #include <cassert>
 #include <algorithm>
@@ -129,6 +130,13 @@ bool VideoFileInput::open(const std::string& source) {
         frameInfo_.totalFrames = frameCount_;
     }
 
+    // Update C globals for compatibility (used by display backends and SMPTEWrapper)
+    movie_width = width;
+    movie_height = height;
+    movie_aspect = frameInfo_.aspect;
+    ::framerate = framerate;
+    frames = frameInfo_.totalFrames;
+
     ready_ = true;
     currentFrame_ = -1;
     return true;
@@ -140,6 +148,13 @@ void VideoFileInput::close() {
     ready_ = false;
     currentFrame_ = -1;
     frameInfo_ = {};
+    
+    // Reset C globals
+    movie_width = 640;
+    movie_height = 360;
+    movie_aspect = 640.0f / 360.0f;
+    ::framerate = 1.0;
+    frames = 1;
 }
 
 bool VideoFileInput::isReady() const {

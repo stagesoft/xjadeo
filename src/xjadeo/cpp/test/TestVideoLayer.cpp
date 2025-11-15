@@ -30,6 +30,7 @@ public:
         return info;
     }
     bool isReady() const override { return true; }
+    int64_t getCurrentFrame() const override { return lastReadFrame_; }
     
     int64_t lastSeekFrame_ = -1;
     int64_t lastReadFrame_ = -1;
@@ -38,7 +39,7 @@ public:
 // Mock SyncSource for testing
 class MockSyncSource : public SyncSource {
 public:
-    bool connect() override { connected_ = true; return true; }
+    bool connect(const char* param = nullptr) override { connected_ = true; return true; }
     void disconnect() override { connected_ = false; }
     bool isConnected() const override { return connected_; }
     int64_t pollFrame(uint8_t* rolling) override {
@@ -46,7 +47,7 @@ public:
         return currentFrame_;
     }
     int64_t getCurrentFrame() const override { return currentFrame_; }
-    std::string getName() const override { return "MockSync"; }
+    const char* getName() const override { return "MockSync"; }
     
     void setCurrentFrame(int64_t frame) { currentFrame_ = frame; }
     void setRolling(bool rolling) { rolling_ = rolling; }

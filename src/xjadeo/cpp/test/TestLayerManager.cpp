@@ -24,6 +24,7 @@ public:
         return info;
     }
     bool isReady() const override { return true; }
+    int64_t getCurrentFrame() const override { return 0; }
 };
 
 bool test_LayerManager_AddLayer() {

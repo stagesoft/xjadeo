@@ -71,6 +71,7 @@ option(ENABLE_LTC "Enable LTC sync support" ON)
 option(ENABLE_MIDI "Enable MIDI support" ON)
 option(ENABLE_PORTMIDI "Enable portmidi support" ON)
 option(ENABLE_ALSAMIDI "Enable ALSA MIDI support" ON)
+option(ENABLE_MIDI_TEST "Enable MIDI testing with libmtcmaster" OFF)
 option(ENABLE_XINERAMA "Enable Xinerama support" OFF)
 option(ENABLE_CUEMS "Enable CUEMS mode" OFF)
 option(ENABLE_WARP "Enable projection warping" OFF)
@@ -88,6 +89,7 @@ if(PLATFORM_LINUX)
     
     pkg_check_modules(XPM REQUIRED xpm)
     add_definitions(${XPM_CFLAGS})
+    set(XPM_LIBS ${XPM_LIBRARIES})
 endif()
 
 # OpenGL
@@ -150,6 +152,13 @@ if(ENABLE_FREETYPE)
     if(FREETYPE_FOUND)
         add_definitions(-DHAVE_FT)
         add_definitions(${FREETYPE_CFLAGS})
+        set(FREETYPE_LIBS ${FREETYPE_LIBRARIES})
+    else()
+        # Fallback: try to find freetype directly
+        find_library(FREETYPE_LIB freetype)
+        if(FREETYPE_LIB)
+            set(FREETYPE_LIBS ${FREETYPE_LIB})
+        endif()
     endif()
 endif()
 
@@ -179,6 +188,13 @@ if(ENABLE_OSC)
     pkg_check_modules(LIBLO liblo)
     if(LIBLO_FOUND)
         add_definitions(-DHAVE_LIBLO)
+        set(LIBLO_LIBS ${LIBLO_LIBRARIES})
+    else()
+        # Fallback: try to find liblo directly
+        find_library(LIBLO_LIB lo)
+        if(LIBLO_LIB)
+            set(LIBLO_LIBS ${LIBLO_LIB})
+        endif()
     endif()
 endif()
 
@@ -210,6 +226,15 @@ if(ENABLE_MIDI)
             add_definitions(-DALSA_SEQ_MIDI)
             # Note: ALSA Raw MIDI not being implemented
             set(ALSA_LIBS ${ALSA_LIBRARIES})
+        else()
+            # Fallback: try to find ALSA library directly
+            find_library(ALSA_LIB asound PATHS /usr/lib /usr/local/lib)
+            if(ALSA_LIB)
+                set(ALSA_FOUND TRUE)
+                set(ALSA_LIBS ${ALSA_LIB})
+                add_definitions(-DALSA_SEQ_MIDI)
+                message(STATUS "Found ALSA: ${ALSA_LIB}")
+            endif()
         endif()
     endif()
     
@@ -223,25 +248,34 @@ if(ENABLE_MIDI)
             if(MTCMASTER_INCLUDE_DIRS)
                 include_directories(${MTCMASTER_INCLUDE_DIRS})
             endif()
-        else
+        else()
             # Fallback: check if library exists directly
-            find_library(MTCMASTER_LIB mtcmaster PATHS /usr/local/lib /usr/lib)
+            # Try different library name variations
+            find_library(MTCMASTER_LIB 
+                NAMES mtcmaster libmtcmaster.so.0 libmtcmaster.so.0.1
+                PATHS /usr/local/lib /usr/lib
+            )
             if(MTCMASTER_LIB)
-                add_definitions(-DHAVE_LIBMTCMASTER)
-                set(MTCMASTER_LIBS ${MTCMASTER_LIB})
                 # Find header directory (libmtcmaster repository location)
+                # Check common locations: repository sibling, /usr/local/include, /usr/include
                 find_path(MTCMASTER_INCLUDE_DIR interface.h 
                     PATHS 
+                    ${CMAKE_SOURCE_DIR}/../libmtcmaster
+                    ${CMAKE_SOURCE_DIR}/../../libmtcmaster
+                    /home/ion/src/cuems/libmtcmaster
                     /usr/local/include
                     /usr/include
-                    ${CMAKE_SOURCE_DIR}/../libmtcmaster
-                    ${CMAKE_CURRENT_SOURCE_DIR}/../libmtcmaster
                 )
                 if(MTCMASTER_INCLUDE_DIR)
+                    add_definitions(-DHAVE_LIBMTCMASTER)
+                    set(MTCMASTER_LIBS ${MTCMASTER_LIB})
                     include_directories(${MTCMASTER_INCLUDE_DIR})
-                    # Also need the parent directory for MtcMaster_class.h
-                    get_filename_component(MTCMASTER_PARENT_DIR ${MTCMASTER_INCLUDE_DIR} DIRECTORY)
-                    include_directories(${MTCMASTER_PARENT_DIR})
+                    # Mark as found if both library and headers are available
+                    set(MTCMASTER_FOUND TRUE)
+                    message(STATUS "Found libmtcmaster: ${MTCMASTER_LIB}")
+                    message(STATUS "  Headers: ${MTCMASTER_INCLUDE_DIR}")
+                else()
+                    message(WARNING "libmtcmaster library found but headers not found. Install headers or set MTCMASTER_INCLUDE_DIR")
                 endif()
             endif()
         endif()
@@ -302,14 +336,15 @@ include_directories(${CMAKE_SOURCE_DIR}/src/xjadeo/cpp)
 # Source files for existing C code (will be gradually replaced)
 # Note: main.c removed - using cpp/main.cpp instead
 set(C_SOURCES
-    src/xjadeo/xjadeo.c
+    # src/xjadeo/video_globals.c - Consolidated into common.c
+    # src/xjadeo/xjadeo.c - Replaced by VideoFileInput, XjadeoApplication, VideoLayer
     # src/xjadeo/remote.c - Replaced by RemoteControl/OSCRemoteControl
     # src/xjadeo/mqueue.c - Message queue remote control (not yet migrated)
     # src/xjadeo/xjosc.c - Replaced by OSCRemoteControl
     # src/xjadeo/configfile.c - Replaced by ConfigurationManager
     src/xjadeo/common.c
-    src/xjadeo/ltc-jack.c
-    src/xjadeo/midi.c
+    # src/xjadeo/ltc-jack.c - Removed (JACK support removed, not used by C++ codebase)
+    # src/xjadeo/midi.c - Removed (C++ version complete and tested, not used by C++ codebase)
     src/xjadeo/freetype.c
     # src/xjadeo/smpte.c - Replaced by cpp/utils/SMPTEUtils.cpp + SMPTEWrapper.cpp
     # smpte.c removed - C code now uses C++ implementation via SMPTEWrapper
@@ -317,9 +352,9 @@ set(C_SOURCES
     src/xjadeo/display_x_dnd.c
     src/xjadeo/display_x_dialog.c
     src/xjadeo/libsofd.c
-    src/xjadeo/display_mac.c
+    # src/xjadeo/display_mac.c - Removed (Linux-only project, macOS not supported)
     src/xjadeo/display_x11.c
-    src/xjadeo/display_sdl.c
+    # src/xjadeo/display_sdl.c - Removed (SDL display not being migrated, Linux-only project)
     # src/xjadeo/gtime.c - Replaced by cpp/utils/TimeUtils.cpp
 )
 
@@ -328,13 +363,14 @@ if(PLATFORM_LINUX OR PLATFORM_NETBSD)
     list(APPEND C_SOURCES src/xjadeo/display_glx.c)
 endif()
 
-if(PLATFORM_WINDOWS)
-    list(APPEND C_SOURCES src/xjadeo/display_gl_win.c src/xjadeo/windows.rc)
-endif()
-
-if(PLATFORM_OSX)
-    list(APPEND C_SOURCES src/xjadeo/display_gl_osx.m)
-endif()
+# Platform-specific files removed (Linux-only project)
+# if(PLATFORM_WINDOWS)
+#     list(APPEND C_SOURCES src/xjadeo/display_gl_win.c src/xjadeo/windows.rc)
+# endif()
+# 
+# if(PLATFORM_OSX)
+#     list(APPEND C_SOURCES src/xjadeo/display_gl_osx.m)
+# endif()
 
 # C++ sources
 set(CPP_SOURCES
@@ -369,6 +405,7 @@ add_executable(xjadeo ${C_SOURCES} ${CPP_SOURCES})
 # Test executable (optional)
 option(BUILD_TESTS "Build test suite" ON)
 if(BUILD_TESTS)
+    # Test source files
     set(TEST_SOURCES
         src/xjadeo/cpp/test/TestFramework.h
         src/xjadeo/cpp/test/TestMain.cpp
@@ -376,15 +413,28 @@ if(BUILD_TESTS)
         src/xjadeo/cpp/test/TestVideoLayer.cpp
         src/xjadeo/cpp/test/TestConfigurationManager.cpp
         src/xjadeo/cpp/test/TestIntegration.cpp
+        src/xjadeo/cpp/test/TestMTCDecoder.cpp
     )
     
-    add_executable(xjadeo_test ${TEST_SOURCES})
+    # C++ implementation files needed by tests
+    set(TEST_CPP_SOURCES
+        src/xjadeo/cpp/config/ConfigurationManager.cpp
+        src/xjadeo/cpp/layer/VideoLayer.cpp
+        src/xjadeo/cpp/layer/LayerManager.cpp
+        src/xjadeo/cpp/sync/MTCDecoder.cpp
+        src/xjadeo/cpp/video/FrameBuffer.cpp
+        src/xjadeo/cpp/input/VideoFileInput.cpp
+        src/xjadeo/cpp/utils/TimeUtils.cpp
+    )
+    
+    add_executable(xjadeo_test ${TEST_SOURCES} ${TEST_CPP_SOURCES} src/xjadeo/common.c)
     target_include_directories(xjadeo_test PRIVATE
         src/xjadeo
         src/xjadeo/cpp
     )
     target_link_libraries(xjadeo_test
-        ${FFMPEG_LIBS}
+        ${FFMPEG_LIBRARIES}
+        ${ALSA_LIBS}
         m
         pthread
     )
@@ -399,10 +449,19 @@ if(BUILD_TESTS)
             src/xjadeo/cpp/test/TestMIDI.cpp
         )
         
-        add_executable(xjadeo_midi_test ${MIDI_TEST_SOURCES})
+        # C++ implementation files needed by MIDI test
+        set(MIDI_TEST_CPP_SOURCES
+            src/xjadeo/cpp/sync/MTCDecoder.cpp
+            src/xjadeo/cpp/sync/ALSASeqMIDIDriver.cpp
+            src/xjadeo/cpp/sync/MIDIDriver.cpp
+            src/xjadeo/cpp/utils/TimeUtils.cpp
+        )
+        
+        add_executable(xjadeo_midi_test ${MIDI_TEST_SOURCES} ${MIDI_TEST_CPP_SOURCES})
         target_include_directories(xjadeo_midi_test PRIVATE
             src/xjadeo
             src/xjadeo/cpp
+            ${MTCMASTER_INCLUDE_DIR}
         )
         target_link_libraries(xjadeo_midi_test
             ${ALSA_LIBS}
@@ -423,7 +482,7 @@ endif()
 
 # Link libraries
 target_link_libraries(xjadeo
-    ${FFMPEG_LIBS}
+    ${FFMPEG_LIBRARIES}
     ${ALSA_LIBS}
     ${XV_LIBS}
     ${FREETYPE_LIBS}
@@ -441,6 +500,11 @@ target_link_libraries(xjadeo
 
 if(PLATFORM_LINUX)
     target_link_libraries(xjadeo ${X11_LIBRARIES})
+    # GLX is part of libGL, but we need to ensure it's linked
+    find_library(GL_LIBRARY GL)
+    if(GL_LIBRARY)
+        target_link_libraries(xjadeo ${GL_LIBRARY})
+    endif()
 endif()
 
 if(PLATFORM_WINDOWS)

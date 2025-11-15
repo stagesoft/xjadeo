@@ -17,17 +17,20 @@ Following **Hybrid Approach with Strategic Migration** (see `MIGRATION_STRATEGY_
 - ✅ `xjosc.c` → `OSCRemoteControl`
 - ✅ `gtime.c` → `TimeUtils.cpp`
 - ✅ `smpte.c` → `SMPTEUtils.cpp` + `SMPTEWrapper.cpp`
+- ✅ `midi.c` → `MIDISyncSource.cpp`, `ALSASeqMIDIDriver.cpp`, `MTCDecoder.cpp`
+- ✅ `ltc-jack.c` → Removed (JACK support removed)
+- ✅ `xjadeo.c` → `VideoFileInput.cpp`, `XjadeoApplication.cpp`, `VideoLayer.cpp`
 
-**Total: 6 C files removed**
+**Total: 9 C files removed**
 
 ### C++ Codebase
-- **59 C++ files** created (headers + implementations)
+- **59+ C++ files** created (headers + implementations)
 - **Major components**: Application, Input/Output, Layers, Display, Remote Control, OSD, Sync, Utilities
 
 ### Remaining C Code
-- ⏳ `xjadeo.c` - Legacy (not used by C++ codebase)
-- ⏳ `midi.c` - C++ version complete, C code still in build (unused)
-- ⏳ Display backends - **KEEP IN C** (platform APIs, performance-critical)
+- ✅ `video_globals.c` - Minimal file for C compatibility (just defines globals)
+- ⏳ `common.c` - Legacy UI functions (not used by C++ codebase, provides stubs)
+- ✅ Display backends - **KEEP IN C** (platform APIs, performance-critical per hybrid strategy)
 
 ## Key Achievements
 
@@ -39,11 +42,11 @@ Following **Hybrid Approach with Strategic Migration** (see `MIGRATION_STRATEGY_
 
 ## Next Steps
 
-1. ⏳ Final testing of C++ MIDI implementation
-2. ⏳ Remove legacy C files from build (`midi.c`, `xjadeo.c`)
+1. ✅ Final testing of C++ MIDI implementation - **COMPLETE**
+2. ✅ Remove legacy C files from build (`midi.c`, `xjadeo.c`) - **COMPLETE**
 3. ⏳ Final integration testing
-4. ⏳ Documentation updates
+4. ✅ Documentation updates - **COMPLETE**
 
 ## Migration Status
-**Substantially Complete** - Core functionality migrated, remaining C code is legacy or platform-specific.
+**Core Migration Complete** - All major business logic migrated to C++. Remaining C code is minimal compatibility code or platform-specific display backends kept per hybrid strategy.
 

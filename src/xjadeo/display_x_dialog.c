@@ -184,7 +184,7 @@ static struct XjxMenuItem submenu_file[] = {
 };
 
 static struct XjxMenuItem mainmenu[] = {
-	{"XJadeo " VERSION,    "", NULL, NULL, 0, 1},
+	{"XJadeo 0.8.9",    "", NULL, NULL, 0, 1},  // VERSION from project version
 	{"",                   "", NULL, NULL, 0, 0},
 	{"File",               "", submenu_file, NULL, 0, 1},
 	{"Sync",               "", submenu_sync, NULL, 0, 1},

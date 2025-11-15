@@ -71,6 +71,15 @@ public:
         LogStream(Logger& logger, Level level, bool shouldLog)
             : logger_(logger), level_(level), shouldLog_(shouldLog) {}
         
+        // Move constructor (needed because ostringstream is not copyable)
+        LogStream(LogStream&& other) noexcept
+            : logger_(other.logger_), level_(other.level_), shouldLog_(other.shouldLog_),
+              stream_(std::move(other.stream_)) {}
+        
+        // Delete copy constructor
+        LogStream(const LogStream&) = delete;
+        LogStream& operator=(const LogStream&) = delete;
+        
         ~LogStream() {
             if (shouldLog_) {
                 std::string msg = stream_.str();
