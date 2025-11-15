@@ -1,0 +1,3 @@
+[submodule "src/mtcreceiver"]
+	path = src/mtcreceiver
+	url = https://github.com/stagesoft/mtcreceiver.git

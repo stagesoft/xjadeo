@@ -5,6 +5,14 @@
 /home/ion/src/cuems/xjadeo/build/CMakeFiles/rebuild_cache.dir
 /home/ion/src/cuems/xjadeo/build/CMakeFiles/edit_cache.dir
 /home/ion/src/cuems/xjadeo/build/CMakeFiles/test.dir
-/home/ion/src/cuems/xjadeo/build/CMakeFiles/xjadeo_midi_test.dir
-/home/ion/src/cuems/xjadeo/build/CMakeFiles/xjadeo_test.dir
-/home/ion/src/cuems/xjadeo/build/CMakeFiles/xjadeo.dir
+/home/ion/src/cuems/xjadeo/build/CMakeFiles/distclean.dir
+/home/ion/src/cuems/xjadeo/build/CMakeFiles/cuems_videocomposer_test.dir
+/home/ion/src/cuems/xjadeo/build/CMakeFiles/cuems-videocomposer.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/install/strip.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/install/local.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/install.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/list_install_components.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/rebuild_cache.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/edit_cache.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/test.dir
+/home/ion/src/cuems/xjadeo/build/src/mtcreceiver/CMakeFiles/mtcreceiver.dir

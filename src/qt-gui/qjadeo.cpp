@@ -205,7 +205,7 @@ void QJadeo::fileExit()
   xjadeo->write(QByteArray("quit\n"));
   xjadeo->write(QByteArray("exit\n"));
   saveOptions();
-  //close(); // we will terminate when xjadeo/xjremote does.
+  //close(); // we will terminate when cuems_videocomposer/xjremote does.
 }
 
 void QJadeo::filePreferences()
@@ -638,7 +638,7 @@ int main(int argc, char **argv)
   w.xjadeo->start(xjadeoPath, QStringList("-R"));
   if(!w.xjadeo->waitForStarted())
   {
-    QMessageBox::QMessageBox::critical( &w, "qjadeo", "can not execute xjadeo/xjremote." ,"Exit", QString::null, QString::null, 0, -1);
+    QMessageBox::QMessageBox::critical( &w, "qjadeo", "can not execute cuems_videocomposer/xjremote." ,"Exit", QString::null, QString::null, 0, -1);
     //qFatal("Could not start xjadeo executable: " + xjadeoPath);
     //qFatal("Try to set the XJREMOTE environment variable to point to xjadeo.");
     exit(1);
@@ -661,7 +661,7 @@ int main(int argc, char **argv)
     QTest::qWait(1000);
   }
   while (w.xjadeo->state()){
-    qDebug("terminate xjadeo/xjremote process.\n");
+    qDebug("terminate cuems_videocomposer/xjremote process.\n");
     w.xjadeo->close();
     QTest::qWait(1000); 
     w.xjadeo->kill();

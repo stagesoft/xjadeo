@@ -99,7 +99,7 @@ The migration follows a gradual approach:
 ## C Code Still in Use
 
 ### Core Functionality
-- `main.c` - ✅ **REMOVED** from build (replaced by `cpp/main.cpp`)
+- `main.c` - ✅ **DELETED** (replaced by `cpp/main.cpp`, file removed from repository)
 - `xjadeo.c` - ✅ **REMOVED** from build (replaced by `VideoFileInput`, `XjadeoApplication`, `VideoLayer`)
 - `common.c` - C compatibility file containing:
   - Video globals (movie_width, framerate, frames, etc.) - set by C++ `VideoFileInput`

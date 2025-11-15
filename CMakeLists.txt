@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(xjadeo VERSION 0.8.9 LANGUAGES C CXX)
+project(cuems-videocomposer VERSION 0.1.0 LANGUAGES C CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
@@ -238,6 +238,37 @@ if(ENABLE_MIDI)
         endif()
     endif()
     
+    # RtMidi (required for mtcreceiver)
+    if(PLATFORM_LINUX)
+        # Try to find RtMidi
+        find_path(RTMIDI_INCLUDE_DIR rtmidi/RtMidi.h
+            PATHS
+                /usr/include
+                /usr/local/include
+                /opt/local/include
+        )
+        find_library(RTMIDI_LIBRARY
+            NAMES rtmidi librtmidi
+            PATHS
+                /usr/lib
+                /usr/local/lib
+                /opt/local/lib
+        )
+        if(RTMIDI_INCLUDE_DIR AND RTMIDI_LIBRARY)
+            set(RTMIDI_FOUND TRUE)
+            set(RTMIDI_INCLUDE_DIRS ${RTMIDI_INCLUDE_DIR})
+            set(RTMIDI_LIBRARIES ${RTMIDI_LIBRARY})
+            message(STATUS "Found RtMidi: ${RTMIDI_LIBRARY}")
+        else()
+            # Try pkg-config as fallback
+            pkg_check_modules(RTMIDI rtmidi)
+            if(RTMIDI_FOUND)
+                set(RTMIDI_INCLUDE_DIRS ${RTMIDI_INCLUDE_DIRS})
+                set(RTMIDI_LIBRARIES ${RTMIDI_LIBRARIES})
+            endif()
+        endif()
+    endif()
+    
     # libmtcmaster for MTC testing
     if(ENABLE_ALSAMIDI AND PLATFORM_LINUX)
         # Try pkg-config first
@@ -309,9 +340,9 @@ endif()
 
 # Standard definitions
 add_definitions(-DCFG_WARN_ONLY)
-add_definitions(-DDND)
+# add_definitions(-DDND)  # Drag and drop removed
 add_definitions(-DWINMENU)
-add_definitions(-DXDLG)
+# add_definitions(-DXDLG)  # Menu removed
 add_definitions(-DXFIB)
 add_definitions(-DCOLOREQ)
 
@@ -330,109 +361,121 @@ endif()
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/xjadeo)
-include_directories(${CMAKE_SOURCE_DIR}/src/xjadeo/cpp)
+include_directories(${CMAKE_SOURCE_DIR}/src/cuems_videocomposer)
+include_directories(${CMAKE_SOURCE_DIR}/src/cuems_videocomposer/cpp)
 
 # Source files for existing C code (will be gradually replaced)
 # Note: main.c removed - using cpp/main.cpp instead
 set(C_SOURCES
-    # src/xjadeo/video_globals.c - Consolidated into common.c
-    # src/xjadeo/xjadeo.c - Replaced by VideoFileInput, XjadeoApplication, VideoLayer
-    # src/xjadeo/remote.c - Replaced by RemoteControl/OSCRemoteControl
-    # src/xjadeo/mqueue.c - Message queue remote control (not yet migrated)
-    # src/xjadeo/xjosc.c - Replaced by OSCRemoteControl
-    # src/xjadeo/configfile.c - Replaced by ConfigurationManager
-    src/xjadeo/common.c
-    # src/xjadeo/ltc-jack.c - Removed (JACK support removed, not used by C++ codebase)
-    # src/xjadeo/midi.c - Removed (C++ version complete and tested, not used by C++ codebase)
-    src/xjadeo/freetype.c
-    # src/xjadeo/smpte.c - Replaced by cpp/utils/SMPTEUtils.cpp + SMPTEWrapper.cpp
+    # src/cuems_videocomposer/video_globals.c - Consolidated into common.c
+    # src/cuems_videocomposer/xjadeo.c - Replaced by VideoFileInput, VideoComposerApplication, VideoLayer
+    # src/cuems_videocomposer/remote.c - Replaced by RemoteControl/OSCRemoteControl
+    # src/cuems_videocomposer/mqueue.c - Message queue remote control (not yet migrated)
+    # src/cuems_videocomposer/xjosc.c - Replaced by OSCRemoteControl
+    # src/cuems_videocomposer/configfile.c - Replaced by ConfigurationManager
+    src/cuems_videocomposer/common.c
+    # src/cuems_videocomposer/ltc-jack.c - Removed (JACK support removed, not used by C++ codebase)
+    # src/cuems_videocomposer/midi.c - Removed (C++ version complete and tested, not used by C++ codebase)
+    src/cuems_videocomposer/freetype.c
+    # src/cuems_videocomposer/smpte.c - Replaced by cpp/utils/SMPTEUtils.cpp + SMPTEWrapper.cpp
     # smpte.c removed - C code now uses C++ implementation via SMPTEWrapper
-    src/xjadeo/display.c
-    src/xjadeo/display_x_dnd.c
-    src/xjadeo/display_x_dialog.c
-    src/xjadeo/libsofd.c
-    # src/xjadeo/display_mac.c - Removed (Linux-only project, macOS not supported)
-    src/xjadeo/display_x11.c
-    # src/xjadeo/display_sdl.c - Removed (SDL display not being migrated, Linux-only project)
-    # src/xjadeo/gtime.c - Replaced by cpp/utils/TimeUtils.cpp
+    src/cuems_videocomposer/display.c
+    # src/cuems_videocomposer/display_x_dnd.c - Removed (drag and drop functionality removed)
+    # src/cuems_videocomposer/display_x_dialog.c - Removed (menu functionality removed)
+    src/cuems_videocomposer/libsofd.c
+    # src/cuems_videocomposer/display_mac.c - Removed (Linux-only project, macOS not supported)
+    src/cuems_videocomposer/display_x11.c
+    # src/cuems_videocomposer/display_sdl.c - Removed (SDL display not being migrated, Linux-only project)
+    # src/cuems_videocomposer/gtime.c - Replaced by cpp/utils/TimeUtils.cpp
 )
 
 # Platform-specific C sources
 if(PLATFORM_LINUX OR PLATFORM_NETBSD)
-    list(APPEND C_SOURCES src/xjadeo/display_glx.c)
+    list(APPEND C_SOURCES src/cuems_videocomposer/display_glx.c)
 endif()
 
 # Platform-specific files removed (Linux-only project)
 # if(PLATFORM_WINDOWS)
-#     list(APPEND C_SOURCES src/xjadeo/display_gl_win.c src/xjadeo/windows.rc)
+#     list(APPEND C_SOURCES src/cuems_videocomposer/display_gl_win.c src/cuems_videocomposer/windows.rc)
 # endif()
 # 
 # if(PLATFORM_OSX)
-#     list(APPEND C_SOURCES src/xjadeo/display_gl_osx.m)
+#     list(APPEND C_SOURCES src/cuems_videocomposer/display_gl_osx.m)
 # endif()
 
 # C++ sources
 set(CPP_SOURCES
-    src/xjadeo/cpp/main.cpp
-    src/xjadeo/cpp/XjadeoApplication.cpp
-    src/xjadeo/cpp/config/ConfigurationManager.cpp
-    src/xjadeo/cpp/input/VideoFileInput.cpp
-    src/xjadeo/cpp/sync/MIDISyncSource.cpp
-    src/xjadeo/cpp/sync/MIDIDriver.cpp
-    src/xjadeo/cpp/sync/MTCDecoder.cpp
-    src/xjadeo/cpp/sync/ALSASeqMIDIDriver.cpp
-    src/xjadeo/cpp/video/FrameBuffer.cpp
-    src/xjadeo/cpp/layer/VideoLayer.cpp
-    src/xjadeo/cpp/layer/LayerManager.cpp
-    src/xjadeo/cpp/display/OpenGLDisplay.cpp
-    src/xjadeo/cpp/display/OpenGLRenderer.cpp
-    src/xjadeo/cpp/display/DisplayManager.cpp
-    src/xjadeo/cpp/display/XineramaHelper.cpp
-    src/xjadeo/cpp/remote/OSCRemoteControl.cpp
-    src/xjadeo/cpp/remote/RemoteCommandRouter.cpp
-    src/xjadeo/cpp/osd/OSDManager.cpp
-    src/xjadeo/cpp/osd/OSDRenderer.cpp
-    src/xjadeo/cpp/utils/SMPTEUtils.cpp
-    src/xjadeo/cpp/utils/SMPTEWrapper.cpp
-    src/xjadeo/cpp/utils/TimeUtils.cpp
+    src/cuems_videocomposer/cpp/main.cpp
+    src/cuems_videocomposer/cpp/VideoComposerApplication.cpp
+    src/cuems_videocomposer/cpp/config/ConfigurationManager.cpp
+    src/cuems_videocomposer/cpp/input/VideoFileInput.cpp
+    src/cuems_videocomposer/cpp/sync/MIDISyncSource.cpp
+    src/cuems_videocomposer/cpp/sync/MIDIDriver.cpp
+    src/cuems_videocomposer/cpp/sync/MTCDecoder.cpp
+    src/cuems_videocomposer/cpp/sync/ALSASeqMIDIDriver.cpp
+    src/cuems_videocomposer/cpp/video/FrameBuffer.cpp
+    src/cuems_videocomposer/cpp/layer/VideoLayer.cpp
+    src/cuems_videocomposer/cpp/layer/LayerManager.cpp
+    src/cuems_videocomposer/cpp/display/OpenGLDisplay.cpp
+    src/cuems_videocomposer/cpp/display/OpenGLRenderer.cpp
+    src/cuems_videocomposer/cpp/display/DisplayManager.cpp
+    src/cuems_videocomposer/cpp/display/XineramaHelper.cpp
+    src/cuems_videocomposer/cpp/remote/OSCRemoteControl.cpp
+    src/cuems_videocomposer/cpp/remote/RemoteCommandRouter.cpp
+    src/cuems_videocomposer/cpp/osd/OSDManager.cpp
+    src/cuems_videocomposer/cpp/osd/OSDRenderer.cpp
+    src/cuems_videocomposer/cpp/utils/SMPTEUtils.cpp
+    src/cuems_videocomposer/cpp/utils/SMPTEWrapper.cpp
+    src/cuems_videocomposer/cpp/utils/TimeUtils.cpp
+    src/cuems_videocomposer/cpp/utils/MIDIBridge.cpp
     # Note: Logger.h is header-only, no .cpp needed
 )
 
+# Add mtcreceiver submodule
+if(ENABLE_MIDI AND RTMIDI_FOUND)
+    add_subdirectory(src/mtcreceiver)
+    add_definitions(-DHAVE_MTCRECEIVER)
+    # Add mtcreceiver driver adapter
+    list(APPEND CPP_SOURCES
+        src/cuems_videocomposer/cpp/sync/MtcReceiverMIDIDriver.cpp
+    )
+endif()
+
 # Create executable
-add_executable(xjadeo ${C_SOURCES} ${CPP_SOURCES})
+add_executable(cuems-videocomposer ${C_SOURCES} ${CPP_SOURCES})
 
 # Test executable (optional)
 option(BUILD_TESTS "Build test suite" ON)
 if(BUILD_TESTS)
     # Test source files
     set(TEST_SOURCES
-        src/xjadeo/cpp/test/TestFramework.h
-        src/xjadeo/cpp/test/TestMain.cpp
-        src/xjadeo/cpp/test/TestLayerManager.cpp
-        src/xjadeo/cpp/test/TestVideoLayer.cpp
-        src/xjadeo/cpp/test/TestConfigurationManager.cpp
-        src/xjadeo/cpp/test/TestIntegration.cpp
-        src/xjadeo/cpp/test/TestMTCDecoder.cpp
+        src/cuems_videocomposer/cpp/test/TestFramework.h
+        src/cuems_videocomposer/cpp/test/TestMain.cpp
+        src/cuems_videocomposer/cpp/test/TestLayerManager.cpp
+        src/cuems_videocomposer/cpp/test/TestVideoLayer.cpp
+        src/cuems_videocomposer/cpp/test/TestConfigurationManager.cpp
+        src/cuems_videocomposer/cpp/test/TestIntegration.cpp
+        src/cuems_videocomposer/cpp/test/TestMTCDecoder.cpp
     )
     
     # C++ implementation files needed by tests
     set(TEST_CPP_SOURCES
-        src/xjadeo/cpp/config/ConfigurationManager.cpp
-        src/xjadeo/cpp/layer/VideoLayer.cpp
-        src/xjadeo/cpp/layer/LayerManager.cpp
-        src/xjadeo/cpp/sync/MTCDecoder.cpp
-        src/xjadeo/cpp/video/FrameBuffer.cpp
-        src/xjadeo/cpp/input/VideoFileInput.cpp
-        src/xjadeo/cpp/utils/TimeUtils.cpp
+        src/cuems_videocomposer/cpp/config/ConfigurationManager.cpp
+        src/cuems_videocomposer/cpp/layer/VideoLayer.cpp
+        src/cuems_videocomposer/cpp/layer/LayerManager.cpp
+        src/cuems_videocomposer/cpp/sync/MTCDecoder.cpp
+        src/cuems_videocomposer/cpp/video/FrameBuffer.cpp
+        src/cuems_videocomposer/cpp/input/VideoFileInput.cpp
+        src/cuems_videocomposer/cpp/utils/TimeUtils.cpp
+        src/cuems_videocomposer/cpp/utils/SMPTEUtils.cpp
     )
     
-    add_executable(xjadeo_test ${TEST_SOURCES} ${TEST_CPP_SOURCES} src/xjadeo/common.c)
-    target_include_directories(xjadeo_test PRIVATE
-        src/xjadeo
-        src/xjadeo/cpp
+    add_executable(cuems_videocomposer_test ${TEST_SOURCES} ${TEST_CPP_SOURCES} src/cuems_videocomposer/common.c)
+    target_include_directories(cuems_videocomposer_test PRIVATE
+        src/cuems_videocomposer
+        src/cuems_videocomposer/cpp
     )
-    target_link_libraries(xjadeo_test
+    target_link_libraries(cuems_videocomposer_test
         ${FFMPEG_LIBRARIES}
         ${ALSA_LIBS}
         m
@@ -441,29 +484,29 @@ if(BUILD_TESTS)
     
     # Add test to CTest
     enable_testing()
-    add_test(NAME xjadeo_unit_tests COMMAND xjadeo_test)
+    add_test(NAME cuems_videocomposer_unit_tests COMMAND cuems_videocomposer_test)
     
     # MIDI test with libmtcmaster (if available and enabled)
     if(ENABLE_MIDI_TEST AND MTCMASTER_FOUND AND ALSA_FOUND)
         set(MIDI_TEST_SOURCES
-            src/xjadeo/cpp/test/TestMIDI.cpp
+            src/cuems_videocomposer/cpp/test/TestMIDI.cpp
         )
         
         # C++ implementation files needed by MIDI test
         set(MIDI_TEST_CPP_SOURCES
-            src/xjadeo/cpp/sync/MTCDecoder.cpp
-            src/xjadeo/cpp/sync/ALSASeqMIDIDriver.cpp
-            src/xjadeo/cpp/sync/MIDIDriver.cpp
-            src/xjadeo/cpp/utils/TimeUtils.cpp
+            src/cuems_videocomposer/cpp/sync/MTCDecoder.cpp
+            src/cuems_videocomposer/cpp/sync/ALSASeqMIDIDriver.cpp
+            src/cuems_videocomposer/cpp/sync/MIDIDriver.cpp
+            src/cuems_videocomposer/cpp/utils/TimeUtils.cpp
         )
         
-        add_executable(xjadeo_midi_test ${MIDI_TEST_SOURCES} ${MIDI_TEST_CPP_SOURCES})
-        target_include_directories(xjadeo_midi_test PRIVATE
-            src/xjadeo
-            src/xjadeo/cpp
+        add_executable(cuems_videocomposer_midi_test ${MIDI_TEST_SOURCES} ${MIDI_TEST_CPP_SOURCES})
+        target_include_directories(cuems_videocomposer_midi_test PRIVATE
+            src/cuems_videocomposer
+            src/cuems_videocomposer/cpp
             ${MTCMASTER_INCLUDE_DIR}
         )
-        target_link_libraries(xjadeo_midi_test
+        target_link_libraries(cuems_videocomposer_midi_test
             ${ALSA_LIBS}
             ${MTCMASTER_LIBS}
             m
@@ -471,7 +514,7 @@ if(BUILD_TESTS)
         )
         
         # Add test to CTest
-        add_test(NAME xjadeo_midi_test COMMAND xjadeo_midi_test)
+        add_test(NAME cuems_videocomposer_midi_test COMMAND cuems_videocomposer_midi_test)
     endif()
 endif()
 
@@ -481,7 +524,7 @@ if(NOT DEFINED ALSA_LIBS)
 endif()
 
 # Link libraries
-target_link_libraries(xjadeo
+target_link_libraries(cuems-videocomposer
     ${FFMPEG_LIBRARIES}
     ${ALSA_LIBS}
     ${XV_LIBS}
@@ -494,28 +537,52 @@ target_link_libraries(xjadeo
     ${GL_LIBS}
     ${MQ_LIBS}
     ${DPY_XINERAMA_LIBS}
+    ${RTMIDI_LIBRARIES}
     m
     pthread
 )
 
+# Link mtcreceiver if available
+if(ENABLE_MIDI AND RTMIDI_FOUND)
+    target_link_libraries(cuems-videocomposer mtcreceiver)
+    target_include_directories(cuems-videocomposer PRIVATE
+        src/mtcreceiver
+        ${RTMIDI_INCLUDE_DIRS}
+    )
+endif()
+
 if(PLATFORM_LINUX)
-    target_link_libraries(xjadeo ${X11_LIBRARIES})
+    target_link_libraries(cuems-videocomposer ${X11_LIBRARIES})
     # GLX is part of libGL, but we need to ensure it's linked
     find_library(GL_LIBRARY GL)
     if(GL_LIBRARY)
-        target_link_libraries(xjadeo ${GL_LIBRARY})
+        target_link_libraries(cuems-videocomposer ${GL_LIBRARY})
     endif()
 endif()
 
 if(PLATFORM_WINDOWS)
-    target_link_libraries(xjadeo ws2_32 winmm comdlg32)
+    target_link_libraries(cuems-videocomposer ws2_32 winmm comdlg32)
 endif()
 
 if(PLATFORM_OSX)
-    target_link_libraries(xjadeo dl)
+    target_link_libraries(cuems-videocomposer dl)
 endif()
 
 # Install
-install(TARGETS xjadeo DESTINATION bin)
-install(FILES src/xjadeo/fonts/ArdourMono.ttf DESTINATION share/xjadeo)
+install(TARGETS cuems-videocomposer DESTINATION bin)
+install(FILES src/cuems_videocomposer/fonts/ArdourMono.ttf DESTINATION share/cuems-videocomposer)
+
+# Clean targets
+# Standard CMake clean: 'make clean' removes build artifacts (objects, executables) but keeps CMake cache
+# Distclean: 'make distclean' removes both build artifacts and CMake cache for a completely fresh build
+add_custom_target(distclean
+    COMMAND ${CMAKE_BUILD_TOOL} clean
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/CMakeFiles
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/CMakeCache.txt
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/cmake_install.cmake
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/Makefile
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/CTestTestfile.cmake
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/Testing
+    COMMENT "Removing CMake cache and all build artifacts"
+)
 
