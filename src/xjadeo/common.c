@@ -18,6 +18,8 @@
  */
 
 #include "xjadeo.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 /// here ??
 extern int64_t frames;
@@ -29,42 +31,73 @@ extern int OSD_fx, OSD_fy;
 extern int OSD_sx, OSD_sy;
 extern int OSD_tx, OSD_ty;
 
+// Stub for remote_printf (remote.c removed, remote control migrated to C++)
+// This prevents linker errors for functions in common.c that reference it
+// JACK/LTC support has been removed, so these functions are no longer functional
+static void remote_printf_stub(int val, const char *format, ...) {
+	// Remote control now handled by C++ OSCRemoteControl
+	// This stub prevents linker errors but does nothing
+	(void)val;
+	(void)format;
+	// Could optionally log to stderr if needed for debugging
+}
+
+// Provide remote_printf if not defined elsewhere (remote.c removed)
+#ifndef HAVE_REMOTE_PRINTF
+void remote_printf(int val, const char *format, ...) {
+	remote_printf_stub(val, format);
+}
+#endif
+
 void INT_sync_to_jack (int remote_msg) {
+	// JACK support removed - this function is no longer functional
+	// Kept for compatibility but does nothing
+	(void)remote_msg;
 #ifdef HAVE_MIDI
 	if (midi_connected()) midi_close();
 #endif
 #ifdef HAVE_LTC
 	if (ltcjack_connected()) close_ltcjack();
 #endif
-	open_jack();
+	// open_jack(); // JACK removed
 	if (remote_msg) {
-		if (jack_connected())
-			remote_printf (100,"connected to jack server.");
-		else
-			remote_printf (405,"failed to connect to jack server");
+		remote_printf (405,"JACK support has been removed");
 	}
 }
 
 void INT_sync_to_ltc (char *port, int remote_msg) {
-	if (jack_connected()) close_jack();
+	// JACK/LTC support removed - this function is no longer functional
+	// Kept for compatibility but does nothing
+	(void)port;
+	(void)remote_msg;
+	// if (jack_connected()) close_jack(); // JACK removed
 #ifdef HAVE_MIDI
 	if (midi_connected()) midi_close();
 #endif
 #ifdef HAVE_LTC
-	if (!ltcjack_connected()) {
-		open_ltcjack (port);
-	}
+	// open_ltcjack(port); // LTC-JACK removed
 	if (remote_msg) {
-		if (ltcjack_connected())
-			remote_printf (100,"opened LTC jack port.");
-		else
-			remote_printf (405,"failed to connect to jack server");
+		remote_printf (499,"LTC-jack support has been removed");
 	}
 #else
-	if (remote_msg)
+	if (remote_msg) {
 		remote_printf (499,"LTC-jack is not available.");
+	}
 #endif
 }
+
+// Stub JACK functions (JACK support removed)
+// These prevent linker errors for common.c functions that reference JACK
+static int jack_connected_stub(void) { return 0; }
+static void open_jack_stub(void) { }
+static void close_jack_stub(void) { }
+
+// Provide JACK stubs if not defined elsewhere (jack.c removed)
+#ifndef HAVE_JACK_FUNCTIONS
+int jack_connected(void) { return jack_connected_stub(); }
+void open_jack(void) { open_jack_stub(); }
+void close_jack(void) { close_jack_stub(); }
+#endif
 
 void ui_sync_none () {
 	if (interaction_override&OVR_MENUSYNC) return;

@@ -26,7 +26,8 @@
 #include <assert.h>
 
 #include "remote.h"
-#include "gtime.h"
+// Use C++ TimeUtils implementation (C-compatible)
+#include "../cpp/utils/TimeUtils.h"
 
 #ifndef MIN
 #define MIN(A,B) (((A)<(B)) ? (A) : (B))

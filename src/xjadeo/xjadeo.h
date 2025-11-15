@@ -257,10 +257,9 @@ void open_ltcjack(char *autoconnect);
 void close_ltcjack(void);
 int ltcjack_connected(void);
 
-/* smpte.c prototypes */
-int64_t smptestring_to_frame (char *str);
-int frame_to_smptestring(char *smptestring, int64_t frame, uint8_t add_sign);
-int64_t smpte_to_frame(int type, int f, int s, int m, int h, int overflow);
+/* smpte.c prototypes - Now provided by C++ SMPTEWrapper */
+// Use C++ implementation via C-compatible wrapper
+#include "cpp/utils/SMPTEWrapper.h"
 
 /* midi.c function prototype */
 int midi_connected(void);
